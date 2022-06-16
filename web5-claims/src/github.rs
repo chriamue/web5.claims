@@ -16,6 +16,21 @@ pub struct User {
     public_repos: u64,
 }
 
+impl Default for User {
+    fn default() -> Self {
+        User {
+            id: 1,
+            login: "default".to_string(),
+            name: "default".to_string(),
+            created_at: Utc::now(),
+            url: "https://api.github.com".to_string(),
+            html_url: "https://github.com".to_string(),
+            followers: 0,
+            public_repos: 0,
+        }
+    }
+}
+
 pub fn new_client(
     github_client_id: String,
     github_client_secret: String,
@@ -48,4 +63,14 @@ pub async fn get_user(access_token: &String) -> Result<User, Box<dyn Error>> {
         .header("Accept", "application/json");
     let res = req.send().await?;
     Ok(res.json::<User>().await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_user() {
+        assert_eq!(User::default().public_repos, 0);
+    }
 }
