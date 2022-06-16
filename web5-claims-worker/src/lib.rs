@@ -1,3 +1,5 @@
+use base58::FromBase58;
+use did_key::{generate, DIDCore, X25519KeyPair, CONFIG_LD_PUBLIC};
 use oauth2::{reqwest::async_http_client, TokenResponse};
 use serde_json::{json, Value};
 use std::str::FromStr;
@@ -56,6 +58,14 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
             Response::ok(version)
         })
+        .get("/.well-known/did.json", |_req, ctx| {
+            let seed = ctx.secret("DID_KEY_SEED").unwrap().to_string();
+            let key = generate::<X25519KeyPair>(Some(&seed.from_base58().unwrap()));
+            let mut did_doc = key.get_did_document(CONFIG_LD_PUBLIC);
+            did_doc.verification_method[0].private_key = None;
+            let did_doc = serde_json::to_value(&did_doc).unwrap();
+            Response::from_json(&did_doc)
+        })
         .get("/github", |_, ctx| {
             let client = new_client(
                 ctx.secret("GITHUB_CLIENT_ID")?.to_string(),
@@ -82,7 +92,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
 
             match get_user(access_token).await {
                 Ok(user) => {
-                    let issuer = "https://web5.claims";
+                    let issuer = "did:web:web5.claims";
                     match create_vc(issuer.to_string(), user) {
                         Ok(credential) => {
                             let credential: Value = serde_json::from_str(&credential)?;
