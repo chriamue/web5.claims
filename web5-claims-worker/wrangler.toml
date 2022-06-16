@@ -5,6 +5,7 @@ compatibility_date = "2022-06-16"
 
 [vars]
 WORKERS_RS_VERSION = "0.0.9"
+REDIRECT_URL = "https://web5.claims/callback"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release" # required

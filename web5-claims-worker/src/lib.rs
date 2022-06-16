@@ -1,6 +1,11 @@
+use oauth2::{reqwest::async_http_client, TokenResponse};
 use serde_json::json;
 use std::str::FromStr;
-use web5_claims::get_auth_url;
+use web5_claims::{
+    get_auth_url,
+    github::{get_user, new_client},
+    parse_auth_code,
+};
 use worker::*;
 
 mod utils;
@@ -45,7 +50,6 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     None => return Response::error("Bad Request", 400),
                 }
             }
-
             Response::error("Bad Request", 400)
         })
         .get("/worker-version", |_, ctx| {
@@ -53,10 +57,36 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             Response::ok(version)
         })
         .get("/github", |_, ctx| {
-            Response::redirect(Url::from_str(&get_auth_url(
+            let client = new_client(
                 ctx.secret("GITHUB_CLIENT_ID")?.to_string(),
                 ctx.secret("GITHUB_CLIENT_SECRET")?.to_string(),
-            ))?)
+                ctx.var("REDIRECT_URL")?.to_string(),
+            );
+            Response::redirect(Url::from_str(&get_auth_url(&client))?)
+        })
+        .get_async("/callback", |req, ctx| async move {
+            let url = req.url().unwrap();
+            let (code, _) = parse_auth_code(url).unwrap();
+            let client = new_client(
+                ctx.secret("GITHUB_CLIENT_ID")?.to_string(),
+                ctx.secret("GITHUB_CLIENT_SECRET")?.to_string(),
+                ctx.var("REDIRECT_URL")?.to_string(),
+            );
+            let token_res = client
+                .exchange_code(code)
+                .request_async(async_http_client)
+                .await
+                .unwrap();
+
+            let access_token = token_res.access_token().secret();
+
+            match get_user(access_token).await {
+                Ok(user) => Response::from_json(&user),
+                Err(err) => Response::error(
+                    format!("Github returned the following error:\n{:?}\n", err),
+                    400,
+                ),
+            }
         })
         .run(req, env)
         .await
