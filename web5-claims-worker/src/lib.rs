@@ -1,9 +1,9 @@
 use oauth2::{reqwest::async_http_client, TokenResponse};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::str::FromStr;
 use web5_claims::{
     get_auth_url,
-    github::{get_user, new_client},
+    github::{create_vc, get_user, new_client},
     parse_auth_code,
 };
 use worker::*;
@@ -81,7 +81,16 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let access_token = token_res.access_token().secret();
 
             match get_user(access_token).await {
-                Ok(user) => Response::from_json(&user),
+                Ok(user) => {
+                    let issuer = "https://web5.claims";
+                    match create_vc(issuer.to_string(), user) {
+                        Ok(credential) => {
+                            let credential: Value = serde_json::from_str(&credential)?;
+                            Response::from_json(&credential)
+                        }
+                        Err(err) => Response::error(format!("error {:?}", err), 400),
+                    }
+                }
                 Err(err) => Response::error(
                     format!("Github returned the following error:\n{:?}\n", err),
                     400,
