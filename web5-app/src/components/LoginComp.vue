@@ -5,7 +5,7 @@ import LinkComp from "./LinkComp.vue";
 <template>
   <div class="login">
     <link-comp
-      url="https://web5.claims/github"
+      url="https://api.web5.claims/github"
       name="Github"
       icon="fa-brands fa-github"
       title="Get your Github claims"

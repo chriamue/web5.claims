@@ -70,7 +70,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let client = new_client(
                 ctx.secret("GITHUB_CLIENT_ID")?.to_string(),
                 ctx.secret("GITHUB_CLIENT_SECRET")?.to_string(),
-                ctx.var("REDIRECT_URL")?.to_string(),
+                ctx.var("GITHUB_REDIRECT_URL")?.to_string(),
             );
             Response::redirect(Url::from_str(&get_auth_url(&client))?)
         })
@@ -80,7 +80,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let client = new_client(
                 ctx.secret("GITHUB_CLIENT_ID")?.to_string(),
                 ctx.secret("GITHUB_CLIENT_SECRET")?.to_string(),
-                ctx.var("REDIRECT_URL")?.to_string(),
+                ctx.var("GITHUB_REDIRECT_URL")?.to_string(),
             );
             let token_res = client
                 .exchange_code(code)
