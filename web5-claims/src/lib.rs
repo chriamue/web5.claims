@@ -13,7 +13,7 @@ pub fn parse_auth_code(url: Url) -> Result<(AuthorizationCode, CsrfToken), Box<d
             let &(ref key, _) = pair;
             key == "code"
         })
-        .ok_or(SimpleError::new("no code in params"))?;
+        .ok_or_else(|| SimpleError::new("no code in params"))?;
 
     let (_, value) = code_pair;
     let code = AuthorizationCode::new(value.into_owned());
@@ -24,7 +24,7 @@ pub fn parse_auth_code(url: Url) -> Result<(AuthorizationCode, CsrfToken), Box<d
             let &(ref key, _) = pair;
             key == "state"
         })
-        .ok_or(SimpleError::new("no state in params"))?;
+        .ok_or_else(|| SimpleError::new("no state in params"))?;
 
     let (_, value) = state_pair;
     let state = CsrfToken::new(value.into_owned());
@@ -43,7 +43,7 @@ mod tests {
             "github_client_secret".to_string(),
             "http://localhost:8080".to_string(),
         );
-        let url = get_auth_url(&client);
+        let url = github::get_auth_url(&client);
         assert!(url.starts_with("https://"));
     }
 

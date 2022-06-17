@@ -1,4 +1,4 @@
-use base64::encode;
+use base58::ToBase58;
 use did_key::CoreSign;
 use did_key::{DIDCore, KeyPair};
 use identity_iota::core::json;
@@ -14,6 +14,7 @@ use oauth2::{
     AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, RevocationUrl, Scope, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::error::Error;
 
 #[derive(Serialize, Deserialize)]
@@ -52,27 +53,27 @@ pub fn create_vc(
         .subject(subject)
         .build()?;
 
-    let proof_options = ProofOptions {
-        created: Some(Timestamp::now_utc()),
-        expires: None,
-        challenge: None,
-        domain: None,
-        purpose: Some(ProofPurpose::AssertionMethod),
-    };
-    match issuer_key {
-        Some(key) => {
-            let json_credential = serde_json::to_string(&credential.credential_subject).unwrap();
-            let b64_credential = encode(json_credential);
-            let did = key.get_did_document(Default::default()).id;
-
-            let signed = key.sign(b64_credential.as_bytes());
-
-            let mut signature: Proof =
-                Proof::new_with_options("Ed25519Signature2020", &did, proof_options);
-            signature.set_value(ProofValue::Proof(encode(&signed)));
-            credential.proof = Some(signature);
-        }
-        _ => (),
+    if let Some(key) = issuer_key {
+        let proof_options = ProofOptions {
+            created: Some(Timestamp::now_utc()),
+            expires: None,
+            challenge: None,
+            domain: None,
+            purpose: Some(ProofPurpose::AssertionMethod),
+        };
+        let did = key.get_did_document(Default::default()).id;
+        let mut signature: Proof =
+            Proof::new_with_options("JcsEd25519Signature2020", &did, proof_options);
+        credential.proof = Some(signature.clone());
+        // https://identity.foundation/JcsEd25519Signature2020/
+        let jcs_credential = serde_jcs::to_vec(&credential).unwrap();
+        let mut hasher = Sha256::new();
+        hasher.update(jcs_credential);
+        let sha_credential = hasher.finalize();
+        let signed = key.sign(&sha_credential);
+        let b58_hash = signed.to_base58();
+        signature.set_value(ProofValue::Proof(b58_hash));
+        credential.proof = Some(signature.clone());
     };
     Ok(credential.to_string())
 }
@@ -133,11 +134,6 @@ mod tests {
     use super::*;
     use did_key::{generate, Ed25519KeyPair};
     use serde_json::Value;
-
-    #[test]
-    fn test_default_user() {
-        assert_eq!(User::default().public_repos, 0);
-    }
 
     #[test]
     fn test_issue_vc() {
