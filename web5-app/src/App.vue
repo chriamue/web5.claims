@@ -16,7 +16,7 @@ const vc = params.get("vc");
     />
 
     <div class="wrapper">
-      <h1>Get your Web5 claims for</h1>
+      <h1>Get your Web5 claims</h1>
     </div>
   </header>
 
