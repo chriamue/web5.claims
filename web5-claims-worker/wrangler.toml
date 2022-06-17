@@ -7,6 +7,7 @@ compatibility_date = "2022-06-16"
 WORKERS_RS_VERSION = "0.0.9"
 GITHUB_REDIRECT_URL = "https://api.web5.claims/github/callback"
 GOOGLE_REDIRECT_URL = "https://api.web5.claims/google/callback"
+AZURE_REDIRECT_URL = "https://api.web5.claims/azure/callback"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release" # required

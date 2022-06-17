@@ -16,6 +16,12 @@ import LinkComp from "./LinkComp.vue";
       icon="fa-brands fa-google"
       title="Get your Google claims"
     />
+    <link-comp
+      url="https://api.web5.claims/azure"
+      name="Azure"
+      icon="fa-brands fa-microsoft"
+      title="Get your Azure claims"
+    />
   </div>
 </template>
 

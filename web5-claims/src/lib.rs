@@ -3,6 +3,7 @@ use simple_error::SimpleError;
 use std::error::Error;
 use url::Url;
 
+pub mod azure;
 pub mod github;
 pub mod google;
 

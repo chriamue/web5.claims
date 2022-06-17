@@ -4,7 +4,7 @@ use did_key::{generate, DIDCore, Ed25519KeyPair, CONFIG_LD_PUBLIC};
 use oauth2::{reqwest::async_http_client, TokenResponse};
 use serde_json::json;
 use std::str::FromStr;
-use web5_claims::{github, google, parse_auth_code};
+use web5_claims::{azure, github, google, parse_auth_code};
 use worker::*;
 
 mod utils;
@@ -79,6 +79,15 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             );
             Response::redirect(Url::from_str(&google::get_auth_url(&client))?)
         })
+        .get("/azure", |_, ctx| {
+            let client = azure::new_client(
+                ctx.secret("AZURE_CLIENT_ID")?.to_string(),
+                ctx.secret("AZURE_CLIENT_SECRET")?.to_string(),
+                ctx.var("AZURE_REDIRECT_URL")?.to_string(),
+                ctx.var("AZURE_TENANT_ID")?.to_string(),
+            );
+            Response::redirect(Url::from_str(&azure::get_auth_url(&client))?)
+        })
         .get_async("/github/callback", |req, ctx| async move {
             let url = req.url().unwrap();
             let (code, _) = parse_auth_code(url).unwrap();
@@ -129,7 +138,6 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 .unwrap();
 
             let access_token = token_res.access_token().secret();
-            console_log!("access_token {}", access_token);
 
             match google::get_user(access_token).await {
                 Ok(user) => {
@@ -146,6 +154,43 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 }
                 Err(err) => Response::error(
                     format!("Google returned the following error:\n{:?}\n", err),
+                    400,
+                ),
+            }
+        })
+        .get_async("/azure/callback", |req, ctx| async move {
+            let url = req.url().unwrap();
+            let (code, _) = parse_auth_code(url).unwrap();
+            let client = azure::new_client(
+                ctx.secret("AZURE_CLIENT_ID")?.to_string(),
+                ctx.secret("AZURE_CLIENT_SECRET")?.to_string(),
+                ctx.var("AZURE_REDIRECT_URL")?.to_string(),
+                ctx.var("AZURE_TENANT_ID")?.to_string(),
+            );
+            let token_res = client
+                .exchange_code(code)
+                .request_async(async_http_client)
+                .await
+                .unwrap();
+
+            let access_token = token_res.access_token().secret();
+            console_log!("access {}", access_token);
+
+            match azure::get_user(access_token).await {
+                Ok(user) => {
+                    let issuer = "did:web:web5.claims";
+                    let seed = ctx.secret("DID_KEY_SEED").unwrap().to_string();
+                    let key = generate::<Ed25519KeyPair>(Some(&seed.from_base58().unwrap()));
+                    match azure::create_vc(issuer.to_string(), user, Some(key)) {
+                        Ok(credential) => Response::redirect(Url::from_str(&format!(
+                            "https://web5.claims?vc={}",
+                            encode(credential)
+                        ))?),
+                        Err(err) => Response::error(format!("error {:?}", err), 400),
+                    }
+                }
+                Err(err) => Response::error(
+                    format!("Azure returned the following error:\n{:?}\n", err),
                     400,
                 ),
             }
