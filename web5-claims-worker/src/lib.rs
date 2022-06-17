@@ -1,4 +1,5 @@
 use base58::FromBase58;
+use base64::encode;
 use did_key::{generate, DIDCore, Ed25519KeyPair, CONFIG_LD_PUBLIC};
 use oauth2::{reqwest::async_http_client, TokenResponse};
 use serde_json::{json, Value};
@@ -97,8 +98,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     let key = generate::<Ed25519KeyPair>(Some(&seed.from_base58().unwrap()));
                     match create_vc(issuer.to_string(), user, Some(key)) {
                         Ok(credential) => {
-                            let credential: Value = serde_json::from_str(&credential)?;
-                            Response::from_json(&credential)
+                            Response::redirect(Url::from_str(&format!("https://web5.claims?vc={}", encode(credential)))?)
                         }
                         Err(err) => Response::error(format!("error {:?}", err), 400),
                     }

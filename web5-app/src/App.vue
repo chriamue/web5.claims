@@ -1,5 +1,8 @@
 <script setup>
 import LoginComp from "./components/LoginComp.vue";
+import VerifiableCredential from "./components/VerifiableCredential.vue";
+const params = new URLSearchParams(document.location.search);
+const vc = params.get("vc");
 </script>
 
 <template>
@@ -19,6 +22,7 @@ import LoginComp from "./components/LoginComp.vue";
 
   <main>
     <login-comp />
+    <verifiable-credential v-if="vc" :base64="vc" />
   </main>
 </template>
 
