@@ -1,22 +1,10 @@
-use oauth2::basic::BasicClient;
-use oauth2::{AuthorizationCode, CsrfToken, Scope};
+use oauth2::{AuthorizationCode, CsrfToken};
 use simple_error::SimpleError;
 use std::error::Error;
 use url::Url;
 
 pub mod github;
-
-pub fn get_auth_url(client: &BasicClient) -> String {
-    // Generate the authorization URL to which we'll redirect the user.
-    let (authorize_url, _csrf_state) = client
-        .authorize_url(CsrfToken::new_random)
-        // This example is requesting access to the user's public repos and email.
-        .add_scope(Scope::new("public_repo".to_string()))
-        .add_scope(Scope::new("user:email".to_string()))
-        .url();
-
-    authorize_url.to_string()
-}
+pub mod google;
 
 pub fn parse_auth_code(url: Url) -> Result<(AuthorizationCode, CsrfToken), Box<dyn Error>> {
     let code_pair = url

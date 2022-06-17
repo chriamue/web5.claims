@@ -10,6 +10,12 @@ import LinkComp from "./LinkComp.vue";
       icon="fa-brands fa-github"
       title="Get your Github claims"
     />
+    <link-comp
+      url="https://api.web5.claims/google"
+      name="Google"
+      icon="fa-brands fa-google"
+      title="Get your Google claims"
+    />
   </div>
 </template>
 

@@ -12,7 +12,6 @@ const decode = (base64) => {
   return Buffer.from(base64, "base64").toString("utf-8");
 };
 const decoded = decode(props.base64);
-console.log(decoded);
 const qrcode = ref(null);
 QRCode.toDataURL(decoded).then((qr) => {
   qrcode.value = qr;

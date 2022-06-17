@@ -1,5 +1,4 @@
 use base64::encode;
-use chrono::{DateTime, Utc};
 use did_key::CoreSign;
 use did_key::{DIDCore, KeyPair};
 use identity_iota::core::json;
@@ -11,33 +10,25 @@ use identity_iota::credential::CredentialBuilder;
 use identity_iota::credential::Subject;
 use identity_iota::crypto::{Proof, ProofOptions, ProofPurpose, ProofValue};
 use oauth2::basic::BasicClient;
-use oauth2::{AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope, TokenUrl};
+use oauth2::{
+    AuthUrl, ClientId, ClientSecret, CsrfToken, RedirectUrl, RevocationUrl, Scope, TokenUrl,
+};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
-    id: u64,
-    login: String,
+    sub: String,
     name: String,
-    created_at: DateTime<Utc>,
-    url: String,
-    html_url: String,
-    followers: u64,
-    public_repos: u64,
+    email: String,
 }
 
 impl Default for User {
     fn default() -> Self {
         User {
-            id: 1,
-            login: "default".to_string(),
+            sub: "1".to_string(),
             name: "default".to_string(),
-            created_at: Utc::now(),
-            url: "https://api.github.com".to_string(),
-            html_url: "https://github.com".to_string(),
-            followers: 0,
-            public_repos: 0,
+            email: "example@gmail.com".to_string()
         }
     }
 }
@@ -48,19 +39,14 @@ pub fn create_vc(
     issuer_key: Option<KeyPair>,
 ) -> Result<String, Box<dyn Error>> {
     let subject: Subject = Subject::from_json_value(json!({
-      "id": user.html_url.to_string(),
+      "id": user.sub,
       "name": user.name,
-      "login": user.login,
-      "created_at": user.created_at.to_rfc3339(),
-      "url": user.url,
-      "html_url": user.html_url,
-      "followers": user.followers,
-      "public_repos": user.public_repos
+      "email": user.email
     }))?;
 
     let mut credential: Credential = CredentialBuilder::default()
         .id(Url::parse("https://example.edu/credentials/3732")?)
-        .type_("GithubAccount")
+        .type_("GoogleAccount")
         .issuer(Url::parse(&issuer)?)
         .subject(subject)
         .build()?;
@@ -91,27 +77,31 @@ pub fn create_vc(
 }
 
 pub fn new_client(
-    github_client_id: String,
-    github_client_secret: String,
+    google_client_id: String,
+    google_client_secret: String,
     redirect_url: String,
 ) -> BasicClient {
-    let github_client_id = ClientId::new(github_client_id);
-    let github_client_secret = ClientSecret::new(github_client_secret);
-    let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
+    let google_client_id = ClientId::new(google_client_id);
+    let google_client_secret = ClientSecret::new(google_client_secret);
+    let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())
         .expect("Invalid authorization endpoint URL");
-    let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
+    let token_url = TokenUrl::new("https://www.googleapis.com/oauth2/v3/token".to_string())
         .expect("Invalid token endpoint URL");
 
     // Set up the config for the Github OAuth2 process.
     BasicClient::new(
-        github_client_id,
-        Some(github_client_secret),
+        google_client_id,
+        Some(google_client_secret),
         auth_url,
         Some(token_url),
     )
     // This example will be running its own server at localhost:8080.
     // See below for the server implementation.
     .set_redirect_uri(RedirectUrl::new(redirect_url).expect("Invalid redirect URL"))
+    .set_revocation_uri(
+        RevocationUrl::new("https://oauth2.googleapis.com/revoke".to_string())
+            .expect("Invalid revocation endpoint URL"),
+    )
 }
 
 pub fn get_auth_url(client: &BasicClient) -> String {
@@ -119,8 +109,9 @@ pub fn get_auth_url(client: &BasicClient) -> String {
     let (authorize_url, _csrf_state) = client
         .authorize_url(CsrfToken::new_random)
         // This example is requesting access to the user's public repos and email.
-        .add_scope(Scope::new("public_repo".to_string()))
-        .add_scope(Scope::new("user:email".to_string()))
+        .add_scope(Scope::new(
+            "https://www.googleapis.com/auth/userinfo.email".to_string(),
+        ))
         .url();
 
     authorize_url.to_string()
@@ -128,10 +119,8 @@ pub fn get_auth_url(client: &BasicClient) -> String {
 
 pub async fn get_user(access_token: &String) -> Result<User, Box<dyn Error>> {
     let req = reqwest::Client::new()
-        .get("https://api.github.com/user")
-        .header("User-Agent", "web5.claims")
-        .header("Authorization", format!("token {}", access_token))
-        .header("Accept", "application/json");
+        .get(format!("https://www.googleapis.com/oauth2/v3/userinfo?access_token={}", access_token))
+        .header("User-Agent", "web5.claims");
     let res = req.send().await?;
     Ok(res.json::<User>().await?)
 }
