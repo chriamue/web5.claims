@@ -129,6 +129,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 .unwrap();
 
             let access_token = token_res.access_token().secret();
+            console_log!("access_token {}", access_token);
 
             match google::get_user(access_token).await {
                 Ok(user) => {

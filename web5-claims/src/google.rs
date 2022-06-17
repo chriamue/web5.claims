@@ -28,7 +28,7 @@ impl Default for User {
         User {
             sub: "1".to_string(),
             name: "default".to_string(),
-            email: "example@gmail.com".to_string()
+            email: "example@gmail.com".to_string(),
         }
     }
 }
@@ -39,7 +39,8 @@ pub fn create_vc(
     issuer_key: Option<KeyPair>,
 ) -> Result<String, Box<dyn Error>> {
     let subject: Subject = Subject::from_json_value(json!({
-      "id": user.sub,
+      "id": format!("mailto://{}", user.email),
+      "sub": user.sub,
       "name": user.name,
       "email": user.email
     }))?;
@@ -109,9 +110,8 @@ pub fn get_auth_url(client: &BasicClient) -> String {
     let (authorize_url, _csrf_state) = client
         .authorize_url(CsrfToken::new_random)
         // This example is requesting access to the user's public repos and email.
-        .add_scope(Scope::new(
-            "https://www.googleapis.com/auth/userinfo.email".to_string(),
-        ))
+        .add_scope(Scope::new("email".to_string()))
+        .add_scope(Scope::new("profile".to_string()))
         .url();
 
     authorize_url.to_string()
@@ -119,7 +119,10 @@ pub fn get_auth_url(client: &BasicClient) -> String {
 
 pub async fn get_user(access_token: &String) -> Result<User, Box<dyn Error>> {
     let req = reqwest::Client::new()
-        .get(format!("https://www.googleapis.com/oauth2/v3/userinfo?access_token={}", access_token))
+        .get(format!(
+            "https://www.googleapis.com/oauth2/v3/userinfo?access_token={}",
+            access_token
+        ))
         .header("User-Agent", "web5.claims");
     let res = req.send().await?;
     Ok(res.json::<User>().await?)
