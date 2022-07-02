@@ -1,4 +1,7 @@
+use didcomm_protocols::{InvitationBuilder, IssueCredentialResponseBuilder};
+use identity_iota::core::ToJson;
 use oauth2::{AuthorizationCode, CsrfToken};
+use serde_json::Value;
 use simple_error::SimpleError;
 use std::error::Error;
 use url::Url;
@@ -33,9 +36,25 @@ pub fn parse_auth_code(url: Url) -> Result<(AuthorizationCode, CsrfToken), Box<d
     Ok((code, state))
 }
 
+pub fn issue_as_invitation(credential: String) -> String {
+    let credential: Value = serde_json::from_str(&credential).unwrap();
+    let issue = IssueCredentialResponseBuilder::new()
+        .attachment(credential)
+        .build_issue_credential()
+        .unwrap();
+    let invitation = InvitationBuilder::new()
+        .attachments(vec![issue])
+        .goal("issue vc".to_string())
+        .goal_code("issue-vc".to_string())
+        .build()
+        .unwrap();
+    invitation.to_json_pretty().unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn test_get_auth_url() {
@@ -57,5 +76,12 @@ mod tests {
         let url = Url::parse("https://example.com/?code=some_code&state=some_state").unwrap();
         let parsed = parse_auth_code(url);
         assert!(parsed.is_ok());
+    }
+
+    #[test]
+    fn test_as_invitation() {
+        let credential = json!({"id": "cred id".to_string()});
+        let invitation = issue_as_invitation(credential.to_string());
+        println!("{}", invitation);
     }
 }

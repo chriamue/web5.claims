@@ -4,7 +4,7 @@ use did_key::{generate, DIDCore, Ed25519KeyPair, CONFIG_LD_PUBLIC};
 use oauth2::{reqwest::async_http_client, TokenResponse};
 use serde_json::json;
 use std::str::FromStr;
-use web5_claims::{azure, github, google, parse_auth_code};
+use web5_claims::{azure, github, google, parse_auth_code, issue_as_invitation};
 use worker::*;
 
 mod utils;
@@ -112,7 +112,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     match github::create_vc(issuer.to_string(), user, Some(key)) {
                         Ok(credential) => Response::redirect(Url::from_str(&format!(
                             "https://web5.claims?vc={}",
-                            encode(credential)
+                            encode(issue_as_invitation(credential))
                         ))?),
                         Err(err) => Response::error(format!("error {:?}", err), 400),
                     }
@@ -147,7 +147,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     match google::create_vc(issuer.to_string(), user, Some(key)) {
                         Ok(credential) => Response::redirect(Url::from_str(&format!(
                             "https://web5.claims?vc={}",
-                            encode(credential)
+                            encode(issue_as_invitation(credential))
                         ))?),
                         Err(err) => Response::error(format!("error {:?}", err), 400),
                     }
@@ -184,7 +184,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     match azure::create_vc(issuer.to_string(), user, Some(key)) {
                         Ok(credential) => Response::redirect(Url::from_str(&format!(
                             "https://web5.claims?vc={}",
-                            encode(credential)
+                            encode(issue_as_invitation(credential))
                         ))?),
                         Err(err) => Response::error(format!("error {:?}", err), 400),
                     }
