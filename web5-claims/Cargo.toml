@@ -25,12 +25,15 @@ simple-error = "0.2"
 url = { version = "2.1", features = ["serde"] }
 sha2 = "0.10"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-identity_iota = { version = "0.6.0" }
+identity_iota = { version = "0.6" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-identity_iota = { version = "=0.6.0", default-features = false, features = [
+identity_iota = { version = "0.6", default-features = false, features = [
   "account",
   "storage-test-suite",
   "unstable-encryption",
   "revocation-bitmap",
 ] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.2"
