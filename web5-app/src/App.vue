@@ -1,6 +1,7 @@
 <script setup>
 import LoginComp from "./components/LoginComp.vue";
 import VerifiableCredential from "./components/VerifiableCredential.vue";
+import KonnektorenPromo from "./components/KonnektorenPromo.vue";
 const params = new URLSearchParams(document.location.search);
 const vc = params.get("vc");
 </script>
@@ -23,6 +24,7 @@ const vc = params.get("vc");
   <main>
     <login-comp />
     <verifiable-credential v-if="vc" :base64="vc" />
+    <konnektoren-promo />
   </main>
 </template>
 
